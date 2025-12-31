@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+<body>
+    <h2>{{.Username}}さんの結果</h2>
+    <p>あなたの選択：{{.Number}}</p>
+    <p>正解：{{.Answer}}</p>
+    <h3>{{.Result}}</h3>
+    <br>
+    <form action="/menu" method="POST">
+        <input type="hidden" name="username" value="{{.Username}}">
+        <input type="submit" value="メニューに戻る">
+    </form>
+</body>
+</html>

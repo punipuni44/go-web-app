@@ -1,14 +1,22 @@
 package main
 
 import (
-	"fmt"
+	"html/template"
 	"log"
 	"math/rand"
 	"net/http"
 	"time"
 )
 
+var tmpl *template.Template
+
 func main() {
+	var err error
+	tmpl, err = template.ParseGlob("templates/*.html")
+	if err != nil {
+		log.Fatalf("template parse error: %v", err)
+	}
+
 	http.HandleFunc("/", formHandler)
 	http.HandleFunc("/menu", menuHandler)
 	http.HandleFunc("/game", gameHandler)
@@ -21,24 +29,7 @@ func main() {
 
 // フォームを表示するハンドラ
 func formHandler(w http.ResponseWriter, r *http.Request) {
-	html := `
-	<!DOCTYPE html>
-	<html>
-	<head>
-		<meta charset="UTF-8">
-		<title>Input Form</title>
-	</head>
-	<body>
-		<h1>名前を入力してください</h1>
-		<form action="/menu" method="POST">
-			<input type="text" name="username">
-			<input type="submit" value="送信">
-		</form>
-	</body>
-	</html>
-	`
-
-	fmt.Fprint(w, html)
+	tmpl.ExecuteTemplate(w, "form.html", nil)
 }
 
 // メニュー
@@ -54,28 +45,15 @@ func menuHandler(w http.ResponseWriter, r *http.Request) {
 
 	// 入力に応じてレスポンスを変える
 	if username == "" {
-		fmt.Fprintln(w, "名前が入力されていません")
+		http.Error(w, "名前が入力されていません", http.StatusBadRequest)
 		return
 	}
 
-	fmt.Fprintf(w, `
-	<!DOCTYPE html>
-	<html>
-	<body>
-		<h2>%sさん、何をしますか？</h2>
+	data := struct {
+		Username string
+	}{Username: username}
 
-		<form action="/game" method="POST">
-			<input type="hidden" name="username" value="%s">
-			<input type="submit" value="🎮ゲーム">
-		</form>
-
-		<form action="/settings" method="GET">
-			<input type="submit" value="設定">
-		</form>
-
-	</body>
-	</html>
-	`, username, username)
+	tmpl.ExecuteTemplate(w, "menu.html", data)
 }
 
 func gameHandler(w http.ResponseWriter, r *http.Request) {
@@ -84,28 +62,12 @@ func gameHandler(w http.ResponseWriter, r *http.Request) {
 	rand.Seed(time.Now().UnixNano())
 	answer := rand.Intn(3) + 1
 
-	fmt.Fprintf(w, `
-	<!DOCTYPE html>
-	<html>
-	<body>
-		<h2>数あてゲーム</h2>
-		<p>1~3 の数字をあててください</p>
+	data := struct {
+		Username string
+		Answer   int
+	}{Username: username, Answer: answer}
 
-		<form action="/game/result" method="POST">
-			<input type="hidden" name="username" value="%s">
-			<input type="hidden" name="answer" value="%d">
-			<input type="number" name="number" min="1" max="3">
-			<input type="submit" value="勝負！">
-		</form>
-
-		<br>
-		<form action="/menu" method="POST">
-		    <input type="hidden" name="username" value="%s">
-			<input type="submit" value="メニューに戻る">
-		</form>
-	</body>
-	</html>
-	`, username, answer, username)
+	tmpl.ExecuteTemplate(w, "game.html", data)
 }
 
 func gameResultHandler(w http.ResponseWriter, r *http.Request) {
@@ -118,43 +80,23 @@ func gameResultHandler(w http.ResponseWriter, r *http.Request) {
 	username := r.FormValue("username")
 	number := r.FormValue("number")
 	answer := r.FormValue("answer")
-
 	result := "はずれ((+_+))"
 	if number == answer {
 		result = "あたり(-.-)"
 	}
 
-	fmt.Fprintf(w, `
-	<!DOCTYPE html>
-	<html>
-	<body>
-		<h2>%sさんの結果</h2>
-		<p>あなたの選択：%s</p>
-		<p>正解：%s</p>
-		<h3>%s</h3>
-		<br>
-		<form action="/menu" method="POST">
-		    <input type="hidden" name="username" value="%s">
-			<input type="submit" value="メニューに戻る">
-		</form>
-	</body>
-	</html>
-	`, username, number, answer, result)
+	data := struct {
+		Username string
+		Number   string
+		Answer   string
+		Result   string
+	}{Username: username, Number: number, Answer: answer, Result: result}
+
+	tmpl.ExecuteTemplate(w, "result.html", data)
 }
 
 func settingsHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, `
-	<!DOCTYPE html>
-	<html>
-	<body>
-		<h2>設定</h2>
-		<p>この機能は現在開発中です。</p>
-		<br>
-		<form action="/menu" method="POST">
-		    <input type="hidden" name="username" value="%s">
-			<input type="submit" value="メニューに戻る">
-		</form>
-	</body>
-	</html>
-	`)
+	username := r.FormValue("username")
+	data := struct{ Username string }{Username: username}
+	tmpl.ExecuteTemplate(w, "settings.html", data)
 }

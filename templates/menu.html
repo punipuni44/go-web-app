@@ -1,0 +1,17 @@
+<!DOCTYPE html>
+<html>
+<body>
+    <h2>{{.Username}}さん、何をしますか？</h2>
+
+    <form action="/game" method="POST">
+        <input type="hidden" name="username" value="{{.Username}}">
+        <input type="submit" value="🎮ゲーム">
+    </form>
+
+    <form action="/settings" method="GET">
+        <input type="hidden" name="username" value="{{.Username}}">
+        <input type="submit" value="設定">
+    </form>
+
+</body>
+</html>
